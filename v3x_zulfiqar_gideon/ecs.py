@@ -102,3 +102,81 @@ class Component:
         
     def update(self, dt):
         pass
+
+from typing import Dict, List, Optional, Any, Set
+from enum import Enum
+from .combat import AttackState, AttackConfig
+
+class Actor(Entity):
+    """
+    An advanced Entity with a priority-based state machine and animation system.
+    """
+    def __init__(self, x: int, y: int):
+        super().__init__(x, y)
+        self.state: Optional[Enum] = None
+        self.animation_index: float = 0.0
+        self.animations: Dict[Enum, List[pygame.Surface]] = {}
+        self.state_configs: Dict[Enum, Any] = {} # Mapping of state to behavior config
+        
+        self.facing_left: bool = False
+        self.velocity = pygame.math.Vector2(0, 0)
+        
+        # Combat integration
+        self.attack_state = AttackState()
+        self.current_attack_config: Optional[AttackConfig] = None
+
+    def set_state(self, new_state: Enum, force: bool = False):
+        """Sets the actor state, respecting priority if defined."""
+        if self.state == new_state:
+            return
+
+        # Simple priority check: lower enum value = higher priority
+        if not force and self.state is not None:
+            if hasattr(self.state, 'value') and hasattr(new_state, 'value'):
+                if new_state.value > self.state.value:
+                    # Check if current state is interruptible
+                    cfg = self.state_configs.get(self.state)
+                    if cfg and hasattr(cfg, 'interruptible') and not cfg.interruptible:
+                        return
+
+        self.state = new_state
+        self.animation_index = 0.0
+        
+        # Sync attack state if entering an attack
+        if self.current_attack_config and hasattr(new_state, 'name') and "ATTACK" in new_state.name:
+            self.attack_state.begin(self.current_attack_config)
+
+    def update_animation(self, dt: float):
+        """Updates the current animation frame."""
+        if not self.state or self.state not in self.animations:
+            return
+
+        frames = self.animations[self.state]
+        cfg = self.state_configs.get(self.state)
+        speed = getattr(cfg, 'animation_speed', 0.2) if cfg else 0.2
+        loops = getattr(cfg, 'loops', True) if cfg else True
+        
+        # Handle hit-stop during attack
+        if self.attack_state.is_in_hit_stop:
+            return
+
+        self.animation_index += speed
+        if self.animation_index >= len(frames):
+            if loops:
+                self.animation_index = 0.0
+            else:
+                self.animation_index = len(frames) - 1
+                # Transition to next state if defined
+                next_state = getattr(cfg, 'next_state', None) if cfg else None
+                if next_state:
+                    self.set_state(next_state, force=True)
+        
+        self.image = frames[int(self.animation_index)]
+        if self.facing_left:
+            self.image = pygame.transform.flip(self.image, True, False)
+
+    def update(self, dt: float):
+        super().update(dt)
+        if self.attack_state.is_active:
+            self.attack_state.update(int(self.animation_index))
+        self.update_animation(dt)
