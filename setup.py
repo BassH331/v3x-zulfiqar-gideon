@@ -8,8 +8,16 @@ setup(
         "pygame>=2.5.0",
         "edge-tts>=6.1.0",
     ],
-    author="V3X Development Core",
-    description="V3X ZULFIQAR-GIDEON: A sovereign, high-octane game framework forged to empower developers to create legends.",
-    long_description="A high-performance Python game engine that decouples infrastructure from content, allowing developers to build, iterate, and deploy legends.",
+    author="V3X",
+    author_email="v3x@v3x.com",  # Placeholder for required field
+    description="V3X ZULFIQAR-GIDEON: A sovereign, high-octane game framework for forging legends.",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
+    url="https://github.com/v3x/zulfiqar-gideon", # Placeholder
     python_requires=">=3.8",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ],
 )

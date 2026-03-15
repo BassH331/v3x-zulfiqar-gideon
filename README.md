@@ -72,4 +72,19 @@ The **AssetManager** handles lazy-loading, caching, and placeholder fallback.
 
 ---
 
+## 🚀 Updating & Shipping
+
+When you make changes to the engine, you need to "bump" the version and push it to the world. We've automated this with a single command.
+
+1.  **Make your changes** to the code or docs.
+2.  **Run the Ship Script**:
+    ```bash
+    ./ship.sh
+    ```
+3.  **Follow the prompts**: Input the new version (e.g., `1.0.1`) and paste your API token.
+
+The script will automatically update `setup.py`, commit to GitHub, tag the release, and upload to PyPI. 
+
+---
+
 *Built by the V3X.*
