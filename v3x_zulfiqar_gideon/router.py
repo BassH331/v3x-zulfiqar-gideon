@@ -10,6 +10,9 @@ from typing import Dict, Any, Type, Optional, TYPE_CHECKING, Union, Callable
 if TYPE_CHECKING:
     from .state_machine import State
 
+# A route target can be a State class or a callable factory that returns a State instance.
+RouteTarget = Union[Type['State'], Callable[..., 'State']]
+
 @dataclass
 class V3XManifest:
     """A configuration manifest for a V3X project."""
@@ -20,22 +23,23 @@ class V3XManifest:
     theme: Dict[str, Any] = field(default_factory=dict)
     # routes maps a State class (or name) to either:
     # 1. A single next State class (default transition)
-    # 2. A Dict mapping event strings to State classes
-    routes: Dict[Union[Type[State], str], Union[Type[State], Dict[str, Type[State]]]] = field(default_factory=dict)
+    # 2. A callable factory that returns a State instance
+    # 3. A Dict mapping event strings to State classes or callable factories
+    routes: Dict[Union[Type[State], str], Union[RouteTarget, Dict[str, RouteTarget]]] = field(default_factory=dict)
     initial_state: Optional[Type[State]] = None
 
 class Router:
     """Manages the game flow based on a route map."""
     
-    def __init__(self, routes: Dict[Union[Type[State], str], Any]):
+    def __init__(self, routes: Dict[Union[Type[State], str], Union[RouteTarget, Dict[str, RouteTarget]]]):
         self._routes = routes
         self._state_manager = None
         
     def set_manager(self, manager: Any):
         self._state_manager = manager
         
-    def get_next(self, current_state: State, event: Optional[str] = None) -> Optional[Type[State]]:
-        """Determine the next state class based on the current state and an optional event."""
+    def get_next(self, current_state: State, event: Optional[str] = None) -> Optional[RouteTarget]:
+        """Determine the next state class or factory based on the current state and an optional event."""
         # Try finding route by class
         route = self._routes.get(type(current_state))
         
@@ -46,8 +50,8 @@ class Router:
         if route is None:
             return None
             
-        # Case 1: Direct transition
-        if isinstance(route, type):
+        # Case 1: Direct transition (class or callable)
+        if isinstance(route, type) or callable(route):
             return route
             
         # Case 2: Event-driven transition
