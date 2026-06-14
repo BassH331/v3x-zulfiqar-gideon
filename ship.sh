@@ -9,32 +9,31 @@ set -e
 echo "⚔️ V3X ZULFIQAR-GIDEON: Preparing to Ship..."
 
 # 1. Ask for version
-current_version=$(grep -oP "version=\"\K[^\"]+" setup.py)
+current_version=$(grep -oP 'version = "\K[^"]+' pyproject.toml)
 echo "Current version: $current_version"
-read -p "Enter new version (e.g., 1.0.1): " new_version
+read -p "Enter new version (e.g., 1.1.1): " new_version
 
 if [ -z "$new_version" ]; then
     echo "❌ Version cannot be empty."
     exit 1
 fi
 
-# 2. Update setup.py
-# Using sed to replace the version line
-sed -i "s/version=\"$current_version\"/version=\"$new_version\"/" setup.py
-echo "✅ setup.py updated to $new_version"
+# 2. Update pyproject.toml
+sed -i "s/version = \"$current_version\"/version = \"$new_version\"/" pyproject.toml
+echo "✅ pyproject.toml updated to $new_version"
 
 # 3. Clean and Build
 echo "🧹 Cleaning old builds..."
-rm -rf dist/ build/ *.egg-info/
+rm -rf dist/ build/ *.egg-info/ v3x_zulfiqar_gideon.egg-info/
 
 echo "🏗️ Building distribution artifacts..."
 source .venv/bin/activate
-python3 setup.py sdist bdist_wheel
+python -m build
 twine check dist/*
 
 # 4. Git Push
 echo "🐙 Syncing with GitHub..."
-git add setup.py
+git add pyproject.toml
 git commit -m "build: Release version $new_version"
 git tag -a "v$new_version" -m "Release $new_version"
 git push origin master --tags

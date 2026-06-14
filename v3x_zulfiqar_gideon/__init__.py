@@ -56,7 +56,10 @@ from .ui import (
 from .effects import SceneHighlighter
 
 # ── World systems ────────────────────────────────────────────────────────────
-from .world import WorldEvent, WorldEventManager, InteractionPoint, Sky, WorldLoader
+from .world import WorldEvent, WorldEventManager
+from .sky import Sky
+from .interaction import InteractionPoint
+from .loader import WorldLoader
 
 # ── Game systems ─────────────────────────────────────────────────────────────
 from .systems import (

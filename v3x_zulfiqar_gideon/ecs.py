@@ -105,7 +105,6 @@ class Component:
 
 from typing import Dict, List, Optional, Any, Set
 from enum import Enum
-from .combat import AttackState, AttackConfig
 
 class Actor(Entity):
     """
@@ -121,7 +120,8 @@ class Actor(Entity):
         self.facing_left: bool = False
         self.velocity = pygame.math.Vector2(0, 0)
         
-        # Combat integration
+        # Lazy import: combat is only needed by Actor, not Entity/Component
+        from .combat import AttackState, AttackConfig
         self.attack_state = AttackState()
         self.current_attack_config: Optional[AttackConfig] = None
 

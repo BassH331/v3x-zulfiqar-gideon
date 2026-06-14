@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "v3x-zulfiqar-gideon"
+version = "1.1.0"
+description = "V3X ZULFIQAR-GIDEON: A sovereign, high-octane game framework for forging legends."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "V3X", email = "v3x@v3x.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Topic :: Games/Entertainment",
+    "Topic :: Software Development :: Libraries :: pygame",
+]
+dependencies = [
+    "pygame>=2.5.0",
+    "edge-tts>=6.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/v3x/zulfiqar-gideon"
+Repository = "https://github.com/v3x/zulfiqar-gideon"
+Issues = "https://github.com/v3x/zulfiqar-gideon/issues"
+
+[tool.setuptools.packages.find]
+include = ["v3x_zulfiqar_gideon*"]
