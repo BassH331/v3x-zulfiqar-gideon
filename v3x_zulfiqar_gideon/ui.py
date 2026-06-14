@@ -292,7 +292,7 @@ class UIButton:
     def update(self, dt: float):
         self._internal.update(dt)
 
-    def draw(self, surface: pg.Surface):
+    def draw(self, surface: Any):
         self._internal.draw(surface)
 
     def set_label(self, label: str):
@@ -401,7 +401,7 @@ class ParchmentDisplay:
 
     def dismiss(self) -> None: self._active = False
 
-    def draw(self, surface: pg.Surface) -> None:
+    def draw(self, surface: Any) -> None:
         if not self._active: return
         surface.blit(self._backdrop, (0, 0))
         surface.blit(self._stone, self._stone_rect)

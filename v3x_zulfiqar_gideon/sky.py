@@ -5,7 +5,7 @@ Provides a generic scrolling background system that can be configured
 with any number of layers at different scroll speeds.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Any
 
 import pygame as pg
 
@@ -44,7 +44,7 @@ class Sky:
             if self.offsets[i] <= -self.width:
                 self.offsets[i] += self.width
                 
-    def draw(self, surface: pg.Surface):
+    def draw(self, surface: Any):
         """Draw all layers with horizontal wrapping."""
         for i, layer in enumerate(self.layers):
             if self.speeds[i] == 0:

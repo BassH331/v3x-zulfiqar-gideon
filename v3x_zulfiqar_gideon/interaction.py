@@ -5,7 +5,7 @@ Provides an invisible world marker (pygame sprite) that detects player
 proximity and displays a contextual prompt.
 """
 
-from typing import Optional
+from typing import Optional, Any
 
 import pygame as pg
 
@@ -112,7 +112,7 @@ class InteractionPoint(pg.sprite.Sprite):
     def update(self, dt: Optional[float] = None, scroll_speed: int = 0) -> None:
         self.rect.x -= scroll_speed
 
-    def draw(self, surface: pg.Surface) -> None:
+    def draw(self, surface: Any) -> None:
         if not self.can_interact:
             return
 
