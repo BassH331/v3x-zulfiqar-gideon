@@ -39,8 +39,7 @@ class V3XCore:
         
         self.clock = pg.time.Clock()
         self.audio_manager = AudioManager()
-        self.state_manager = StateManager()
-        self.state_manager.audio_manager = self.audio_manager
+        self.state_manager = StateManager(audio_manager=self.audio_manager)
         self.is_running = True
 
     def launch(self, manifest: V3XManifest) -> None:

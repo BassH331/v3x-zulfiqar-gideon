@@ -135,6 +135,16 @@ class AudioManager:
         if 0 <= channel_id < len(self.channels):
             self.channels[channel_id].stop()
     
+    def fadeout_sound(self, channel_id: int, fade_ms: int = 500) -> None:
+        """Fade out a sound on the specified channel over the given duration.
+
+        Args:
+            channel_id: Index of the channel to fade out.
+            fade_ms: Duration of the fade in milliseconds (default 500ms).
+        """
+        if 0 <= channel_id < len(self.channels):
+            self.channels[channel_id].fadeout(fade_ms)
+    
     def stop_all_sounds(self) -> None:
         """Stop all currently playing sounds."""
         if not pg.mixer.get_init():

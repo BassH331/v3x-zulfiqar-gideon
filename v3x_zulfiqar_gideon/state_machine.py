@@ -22,25 +22,41 @@ class State:
         pass
 
 class StateManager:
-    def __init__(self):
+    def __init__(self, audio_manager=None):
         self.stack = []
         self.router = None
+        self.audio_manager = audio_manager
         
     def set_router(self, router):
         self.router = router
-        router.set_manager(self)
+        if router:
+            router.set_manager(self)
 
     def next_route(self, current_state: State, event: str = None):
-        """Transition to the next state based on the router's map."""
+        """Transition to the next state based on the router's map.
+        
+        Supports three route value types:
+          1. A State class  → instantiated with (self,)
+          2. A callable/lambda → called to produce a State instance
+          3. A dict mapping event strings → class or callable
+        """
         if not self.router:
             print("[StateManager] Warning: No router configured for next_route")
             return
             
-        next_state_class = self.router.get_next(current_state, event)
-        if next_state_class:
-            self.set(next_state_class(self))
-        else:
+        next_entry = self.router.get_next(current_state, event)
+        if next_entry is None:
             print(f"[StateManager] Warning: No route found for {current_state.__class__.__name__} (event: {event})")
+            return
+
+        # If the route value is callable but NOT a class, it's a factory/lambda
+        if callable(next_entry) and not isinstance(next_entry, type):
+            next_state = next_entry(self)
+        else:
+            # It's a State class — instantiate it
+            next_state = next_entry(self)
+
+        self.set(next_state)
 
     def push(self, state):
         print(f"[DEBUG] StateManager: Pushing state {state.__class__.__name__}")
@@ -78,3 +94,4 @@ class StateManager:
     def handle_event(self, event):
         if self.stack:
             self.stack[-1].handle_event(event)
+
