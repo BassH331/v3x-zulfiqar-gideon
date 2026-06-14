@@ -107,6 +107,29 @@ class AudioManager:
             
         return None
     
+    def play_music(self, sound_name: str, volume: float = 1.0, loop: bool = True) -> None:
+        """
+        Play a sound as background music on a dedicated channel (Channel 0).
+        Stops any existing music on that channel first to prevent overlap.
+        """
+        if sound_name not in self.sound_library:
+            print(f"Music sound not found: {sound_name}")
+            return
+            
+        music_channel = self.channels[0]
+        music_channel.stop() # Ensure no overlap
+        
+        sound = self.sound_library[sound_name]
+        sound.set_volume(max(0.0, min(1.0, volume * self.master_volume)))
+        
+        loops = -1 if loop else 0
+        music_channel.play(sound, loops=loops)
+        print(f"[AudioManager] Music started: {sound_name}")
+
+    def stop_music(self) -> None:
+        """Stop any music playing on the dedicated music channel."""
+        self.channels[0].stop()
+    
     def stop_sound(self, channel_id: int) -> None:
         """Stop a sound on the specified channel index."""
         if 0 <= channel_id < len(self.channels):

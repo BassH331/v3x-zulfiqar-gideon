@@ -2,6 +2,10 @@ class State:
     def __init__(self, manager):
         self.manager = manager
         
+    def finish(self, event: str = None):
+        """Signal the manager that this state is complete."""
+        self.manager.next_route(self, event)
+
     def update(self, dt):
         pass
         
@@ -20,7 +24,24 @@ class State:
 class StateManager:
     def __init__(self):
         self.stack = []
+        self.router = None
         
+    def set_router(self, router):
+        self.router = router
+        router.set_manager(self)
+
+    def next_route(self, current_state: State, event: str = None):
+        """Transition to the next state based on the router's map."""
+        if not self.router:
+            print("[StateManager] Warning: No router configured for next_route")
+            return
+            
+        next_state_class = self.router.get_next(current_state, event)
+        if next_state_class:
+            self.set(next_state_class(self))
+        else:
+            print(f"[StateManager] Warning: No route found for {current_state.__class__.__name__} (event: {event})")
+
     def push(self, state):
         print(f"[DEBUG] StateManager: Pushing state {state.__class__.__name__}")
         if self.stack:
