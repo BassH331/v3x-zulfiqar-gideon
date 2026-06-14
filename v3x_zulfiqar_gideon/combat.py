@@ -158,6 +158,15 @@ class AttackState:
         if not self.is_hit_frame_active() or self._config is None: return None
         return self._config.hitbox_data.get(self._current_frame, _DEFAULT_HITBOX).to_rect(entity_rect, facing_left)
 
+    def get_knockback_force(self) -> float:
+        return self._config.knockback_force if self._config is not None else 0.0
+
+    def has_hit_target(self, target_id: int) -> bool:
+        return target_id in self._hit_counts
+
+    def get_hit_count(self, target_id: int) -> int:
+        return self._hit_counts.get(target_id, 0)
+
 @dataclass(frozen=True, slots=True)
 class HitResult:
     """Result of a successful hit registration."""

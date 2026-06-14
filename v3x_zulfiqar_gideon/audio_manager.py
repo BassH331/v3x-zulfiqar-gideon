@@ -187,6 +187,10 @@ class FootstepController:
         """Set absolute volume (0.0 - 1.0)."""
         self._volume = max(0.0, min(1.0, volume))
 
+    def increase_volume(self, delta: float) -> None:
+        """Adjust volume relatively by delta."""
+        self.set_volume(self._volume + delta)
+
     def set_interval(self, interval_ms: int) -> None:
         """Update cadence interval."""
         self.interval_ms = max(30, interval_ms)
