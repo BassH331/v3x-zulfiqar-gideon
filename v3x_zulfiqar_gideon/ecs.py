@@ -144,7 +144,7 @@ class Actor(Entity):
     def should_deal_damage(self) -> bool:
         return self.attack_state.is_hit_frame_active() if self.attack_state else False
 
-    def get_attack_hitbox(self) -> Optional[pygame.Rect]:
+    def get_attack_hitbox(self) -> Any:
         if not self.should_deal_damage():
             return None
         return self.attack_state.get_current_hitbox(self.rect, self.facing_left)
