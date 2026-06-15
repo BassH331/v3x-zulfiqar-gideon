@@ -23,7 +23,7 @@ from .router import V3XManifest, Router
 from .asset_manager import AssetManager
 
 # ── Audio ────────────────────────────────────────────────────────────────────
-from .audio_manager import AudioManager, FootstepController, SoundPriority
+from .audio_manager import AudioManager, FootstepController, SoundPriority, SpotlightSFXManager, SFXTracker
 
 # ── Entity-Component System ─────────────────────────────────────────────────
 from .ecs import Entity, Component, Actor
@@ -83,7 +83,7 @@ __all__ = [
     # Assets
     "AssetManager",
     # Audio
-    "AudioManager", "FootstepController", "SoundPriority",
+    "AudioManager", "FootstepController", "SoundPriority", "SpotlightSFXManager", "SFXTracker",
     # ECS
     "Entity", "Component", "Actor",
     # Combat

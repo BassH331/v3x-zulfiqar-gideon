@@ -5,6 +5,7 @@ Global game systems like objective and trigger management.
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Type, Any, Set, TypeVar, Protocol
+import pygame as pg
 
 @dataclass
 class ObjectiveTrigger:

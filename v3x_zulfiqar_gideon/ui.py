@@ -330,8 +330,9 @@ class NotificationBanner(FloatingNotification):
         self._icon_imgs = {k: pg.transform.smoothscale(AssetManager.get_texture(p), (icon_size, icon_size)) 
                            for k, p in cfg["icons"].items()}
 
-    def show(self, title: str, notification: str = "gray"):
-        super().show(title, icon=self._icon_imgs.get(notification, self._icon_imgs["gray"]))
+    def show(self, text: str, icon: Optional[pg.Surface] = None, notification: str = "gray"):
+        actual_icon = icon if icon is not None else self._icon_imgs.get(notification, self._icon_imgs["gray"])
+        super().show(text, icon=actual_icon)
 
 class ParchmentDisplay:
     """Full-screen overlay that shows text on a parchment board."""

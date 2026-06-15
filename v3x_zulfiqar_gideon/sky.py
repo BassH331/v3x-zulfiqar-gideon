@@ -15,7 +15,7 @@ from .asset_manager import AssetManager
 class Sky:
     """Generic multi-layer parallax sky/background component."""
     
-    def __init__(self, screen_width: int, screen_height: int, layer_paths: List[str], speeds: List[int] = None):
+    def __init__(self, screen_width: int, screen_height: int, layer_paths: List[str], speeds: Optional[List[int]] = None):
         """
         Initialize the sky with multiple parallax layers.
         

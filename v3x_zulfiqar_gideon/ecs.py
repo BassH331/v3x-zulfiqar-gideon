@@ -114,7 +114,7 @@ class Actor(Entity):
         super().__init__(x, y)
         self.state: Optional[Enum] = None
         self.animation_index: float = 0.0
-        self.animations: Dict[Enum, List[pygame.Surface]] = {}
+        self.animations: Dict[Any, List[Any]] = {}
         self.state_configs: Dict[Enum, Any] = {} # Mapping of state to behavior config
         
         self.facing_left: bool = False
@@ -124,6 +124,46 @@ class Actor(Entity):
         from .combat import AttackState, AttackConfig
         self.attack_state = AttackState()
         self.current_attack_config: Optional[AttackConfig] = None
+
+    @property
+    def hitbox(self) -> pygame.Rect:
+        return self.rect
+
+    @property
+    def entity_id(self) -> int:
+        return id(self)
+
+    @property
+    def is_dead(self) -> bool:
+        return False
+
+    @property
+    def is_invincible(self) -> bool:
+        return False
+
+    def should_deal_damage(self) -> bool:
+        return self.attack_state.is_hit_frame_active() if self.attack_state else False
+
+    def get_attack_hitbox(self) -> Optional[pygame.Rect]:
+        if not self.should_deal_damage():
+            return None
+        return self.attack_state.get_current_hitbox(self.rect, self.facing_left)
+
+    def try_register_hit(self, target_id: int) -> bool:
+        return self.attack_state.try_register_hit(target_id) if self.attack_state else False
+
+    def get_current_attack_damage(self) -> float:
+        return self.attack_state.get_current_damage() if self.attack_state else 0.0
+
+    def draw_debug_hitboxes(self, surface: pygame.Surface) -> None:
+        """Draws the actor's body hitbox and any active attack hitbox for debugging."""
+        # Draw body hitbox (blue outline)
+        pygame.draw.rect(surface, (0, 0, 255), self.rect, 2)
+        
+        # Draw active attack hitbox if present (red/orange outline)
+        atk_hitbox = self.get_attack_hitbox()
+        if atk_hitbox:
+            pygame.draw.rect(surface, (255, 100, 0), atk_hitbox, 2)
 
     def set_state(self, new_state: Enum, force: bool = False):
         """Sets the actor state, respecting priority if defined."""

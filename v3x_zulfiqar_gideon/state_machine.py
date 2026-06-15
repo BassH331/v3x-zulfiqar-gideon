@@ -1,8 +1,10 @@
+from typing import Optional
+
 class State:
     def __init__(self, manager):
         self.manager = manager
         
-    def finish(self, event: str = None):
+    def finish(self, event: Optional[str] = None):
         """Signal the manager that this state is complete."""
         self.manager.next_route(self, event)
 
@@ -32,7 +34,7 @@ class StateManager:
         if router:
             router.set_manager(self)
 
-    def next_route(self, current_state: State, event: str = None):
+    def next_route(self, current_state: State, event: Optional[str] = None):
         """Transition to the next state based on the router's map.
         
         Supports three route value types:
