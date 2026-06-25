@@ -187,18 +187,26 @@ class Actor(Entity):
             self.attack_state.begin(self.current_attack_config)
 
     def update_animation(self, dt: float):
-        """Updates the current animation frame."""
+        """Updates the current animation frame with per-frame speed support."""
         if not self.state or self.state not in self.animations:
             return
 
         frames = self.animations[self.state]
         cfg = self.state_configs.get(self.state)
-        speed = getattr(cfg, 'animation_speed', 0.2) if cfg else 0.2
+        base_speed = getattr(cfg, 'animation_speed', 0.2) if cfg else 0.2
         loops = getattr(cfg, 'loops', True) if cfg else True
         
         # Handle hit-stop during attack
         if self.attack_state.is_in_hit_stop:
             return
+
+        # Per-frame speed curve: use frame-specific speed if available
+        current_frame = int(self.animation_index)
+        frame_speeds = getattr(cfg, 'frame_speeds', None) if cfg else None
+        if frame_speeds and current_frame in frame_speeds:
+            speed = frame_speeds[current_frame]
+        else:
+            speed = base_speed
 
         self.animation_index += speed
         if self.animation_index >= len(frames):
@@ -210,6 +218,8 @@ class Actor(Entity):
                 next_state = getattr(cfg, 'next_state', None) if cfg else None
                 if next_state:
                     self.set_state(next_state, force=True)
+                    if self.state in self.animations:
+                        frames = self.animations[self.state]
         
         self.image = frames[int(self.animation_index)]
         if self.facing_left:

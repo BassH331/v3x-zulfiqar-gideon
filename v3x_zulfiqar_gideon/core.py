@@ -70,17 +70,31 @@ class V3XCore:
         initial_state = initial_state_class(self.state_manager, **kwargs)
         self.state_manager.push(initial_state)
         
+        dt_target = 1000.0 / 60.0  # 60Hz target physics update rate (~16.67 ms)
+        accumulator = 0.0
+        
         while self.is_running:
-            dt = self.clock.get_time()
+            # Tick the clock to get elapsed time. Cap rendering loop at 240 FPS.
+            elapsed = self.clock.tick(240)
+            
+            # Prevent "spiral of death" during lag spikes or window focus transitions
+            if elapsed > 100.0:
+                elapsed = 100.0
+                
+            accumulator += elapsed
+            
             for event in pg.event.get():
                 if event.type == pg.QUIT: self.quit()
                 self.state_manager.handle_event(event)
             
-            self.state_manager.update(dt)
+            # Consume accumulator in fixed physics steps
+            while accumulator >= dt_target:
+                self.state_manager.update(dt_target)
+                accumulator -= dt_target
+                
             self.audio_manager.update()
             self.state_manager.draw(self.screen)
             pg.display.update()
-            self.clock.tick(60)
             
     def quit(self) -> None:
         self.is_running = False
