@@ -55,10 +55,18 @@ class AttackConfig:
     startup_frames: frozenset[int] = field(default_factory=frozenset)
     recovery_frames: frozenset[int] = field(default_factory=frozenset)
 
+    # Precalculated fields for bare-metal runtime performance
+    _cached_cos: float = field(default=1.0, init=False)
+    _cached_sin: float = field(default=0.0, init=False)
+
     def __post_init__(self) -> None:
         if self.base_damage < 0: raise ValueError("base_damage cannot be negative")
         if self.knockback_force < 0: raise ValueError("knockback_force cannot be negative")
         if self.max_hits_per_target < 1: raise ValueError("max_hits_per_target must be at least 1")
+        if self.knockback_angle is not None:
+            angle_rad = math.radians(self.knockback_angle)
+            object.__setattr__(self, "_cached_cos", math.cos(angle_rad))
+            object.__setattr__(self, "_cached_sin", math.sin(angle_rad))
 
 _DEFAULT_HITBOX: Final[HitboxData] = HitboxData()
 
@@ -146,12 +154,12 @@ class AttackState:
         if not self._is_active or self._config is None: return (0.0, 0.0)
         force = self._config.knockback_force
         if self._config.knockback_angle is not None:
-            angle_rad = math.radians(self._config.knockback_angle)
             x_dir = -1.0 if facing_left else 1.0
-            return (math.cos(angle_rad) * force * x_dir, -math.sin(angle_rad) * force)
+            return (self._config._cached_cos * force * x_dir, -self._config._cached_sin * force)
         dx = target_pos[0] - attacker_pos[0]; dy = target_pos[1] - attacker_pos[1]
-        dist = math.sqrt(dx*dx + dy*dy)
-        if dist < 0.001: return (force * (-1.0 if facing_left else 1.0), -force * 0.3)
+        dist_sq = dx*dx + dy*dy
+        if dist_sq < 0.000001: return (force * (-1.0 if facing_left else 1.0), -force * 0.3)
+        dist = math.sqrt(dist_sq)
         return ((dx / dist) * force, (dy / dist) * force)
 
     def get_current_hitbox(self, entity_rect: pg.Rect, facing_left: bool = False) -> Optional[pg.Rect]:
@@ -184,14 +192,25 @@ class CombatProcessor:
         if not attack_state.is_hit_frame_active(): return []
         hitbox = attack_state.get_current_hitbox(attacker_rect, attacker_facing_left)
         if hitbox is None: return []
+        
         results = []
+        # Cache method and attribute lookups locally to minimize loop overhead
+        try_hit = attack_state.try_register_hit
+        get_damage = attack_state.get_current_damage
+        get_kb = attack_state.get_knockback_vector
+        colliderect = hitbox.colliderect
+        
+        attacker_center = attacker_rect.center
+        hit_stop_frames = attack_state.config.hit_stop_frames if attack_state.config else 0
+        curr_frame = attack_state.current_frame
+        
         for tid, trect in targets:
-            if hitbox.colliderect(trect) and attack_state.try_register_hit(tid):
+            if colliderect(trect) and try_hit(tid):
                 results.append(HitResult(
                     target_id=tid,
-                    damage=attack_state.get_current_damage(),
-                    knockback=attack_state.get_knockback_vector(attacker_rect.center, trect.center, attacker_facing_left),
-                    hit_stop_frames=attack_state.config.hit_stop_frames if attack_state.config else 0,
-                    hit_frame=attack_state.current_frame
+                    damage=get_damage(),
+                    knockback=get_kb(attacker_center, trect.center, attacker_facing_left),
+                    hit_stop_frames=hit_stop_frames,
+                    hit_frame=curr_frame
                 ))
         return results
