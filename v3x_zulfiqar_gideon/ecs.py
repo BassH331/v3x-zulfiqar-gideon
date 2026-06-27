@@ -119,6 +119,7 @@ class Actor(Entity):
         
         self.facing_left: bool = False
         self.velocity = pygame.math.Vector2(0, 0)
+        self._animations_flipped: Dict[Any, List[Any]] = {}
         
         # Lazy import: combat is only needed by Actor, not Entity/Component
         from .combat import AttackState, AttackConfig
@@ -182,19 +183,41 @@ class Actor(Entity):
         self.state = new_state
         self.animation_index = 0.0
         
+        # Clear pre-resolved configuration cache fields
+        self._current_frames = None
+        self._current_config = None
+        self._current_base_speed = None
+        self._current_loops = None
+        self._current_frame_speeds = None
+        self._current_next_state = None
+        
         # Sync attack state if entering an attack
         if self.current_attack_config and hasattr(new_state, 'name') and "ATTACK" in new_state.name:
             self.attack_state.begin(self.current_attack_config)
 
     def update_animation(self, dt: float):
         """Updates the current animation frame with per-frame speed support."""
-        if not self.state or self.state not in self.animations:
+        if not self.state:
             return
 
-        frames = self.animations[self.state]
-        cfg = self.state_configs.get(self.state)
-        base_speed = getattr(cfg, 'animation_speed', 0.2) if cfg else 0.2
-        loops = getattr(cfg, 'loops', True) if cfg else True
+        frames = getattr(self, '_current_frames', None)
+        if not frames:
+            frames = self.animations.get(self.state)
+            self._current_frames = frames
+            if not frames:
+                return
+
+        cfg = getattr(self, '_current_config', None)
+        if cfg is None:
+            cfg = self.state_configs.get(self.state)
+            self._current_config = cfg if cfg is not None else False
+            self._current_base_speed = getattr(cfg, 'animation_speed', 0.2) if cfg else 0.2
+            self._current_loops = getattr(cfg, 'loops', True) if cfg else True
+            self._current_frame_speeds = getattr(cfg, 'frame_speeds', None) if cfg else None
+            self._current_next_state = getattr(cfg, 'next_state', None) if cfg else None
+
+        base_speed = self._current_base_speed
+        loops = self._current_loops
         
         # Handle hit-stop during attack
         if self.attack_state.is_in_hit_stop:
@@ -202,7 +225,7 @@ class Actor(Entity):
 
         # Per-frame speed curve: use frame-specific speed if available
         current_frame = int(self.animation_index)
-        frame_speeds = getattr(cfg, 'frame_speeds', None) if cfg else None
+        frame_speeds = self._current_frame_speeds
         if frame_speeds and current_frame in frame_speeds:
             speed = frame_speeds[current_frame]
         else:
@@ -215,15 +238,23 @@ class Actor(Entity):
             else:
                 self.animation_index = len(frames) - 1
                 # Transition to next state if defined
-                next_state = getattr(cfg, 'next_state', None) if cfg else None
+                next_state = self._current_next_state
                 if next_state:
                     self.set_state(next_state, force=True)
-                    if self.state in self.animations:
-                        frames = self.animations[self.state]
+                    frames = getattr(self, '_current_frames', None)
+                    if not frames:
+                        frames = self.animations.get(self.state)
+                        self._current_frames = frames
+                        if not frames:
+                            return
         
         self.image = frames[int(self.animation_index)]
         if self.facing_left:
-            self.image = pygame.transform.flip(self.image, True, False)
+            flipped_frames = self._animations_flipped.get(self.state)
+            if flipped_frames is None or len(flipped_frames) != len(frames):
+                flipped_frames = [pygame.transform.flip(img, True, False) for img in frames]
+                self._animations_flipped[self.state] = flipped_frames
+            self.image = flipped_frames[int(self.animation_index)]
 
     def update(self, dt: float):
         super().update(dt)
