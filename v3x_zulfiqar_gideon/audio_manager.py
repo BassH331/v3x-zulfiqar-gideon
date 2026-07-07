@@ -31,6 +31,11 @@ class AudioManager:
         self.channels = [pg.mixer.Channel(i) for i in range(max_channels)]
         self.sound_library: Dict[str, pg.mixer.Sound] = {}
         self.master_volume = 1.0
+        from .settings import SettingsManager
+        settings = SettingsManager()
+        self.music_volume = settings.get("music_volume")
+        self.sfx_volume = settings.get("sfx_volume")
+
         
     def load_sound(self, sound_name: str, file_path: str) -> None:
         """Load a sound file into the sound library."""
@@ -82,7 +87,7 @@ class AudioManager:
         sound = self.sound_library[sound_name]
         
         # Spatial Audio Calculation
-        final_volume = volume * self.master_volume
+        final_volume = volume * self.sfx_volume * self.master_volume
         if location and player_pos:
             dist = math.hypot(location[0] - player_pos[0], location[1] - player_pos[1])
             max_dist = 500 # pixels
@@ -121,7 +126,7 @@ class AudioManager:
         music_channel.stop() # Ensure no overlap
         
         sound = self.sound_library[sound_name]
-        sound.set_volume(max(0.0, min(1.0, volume * self.master_volume)))
+        sound.set_volume(max(0.0, min(1.0, volume * self.music_volume * self.master_volume)))
         
         loops = -1 if loop else 0
         music_channel.play(sound, loops=loops)
@@ -156,7 +161,18 @@ class AudioManager:
     def set_master_volume(self, volume: float) -> None:
         """Set the master volume (0.0 to 1.0)."""
         self.master_volume = max(0.0, min(1.0, volume))
-    
+        # Update current music volume
+        self.channels[0].set_volume(self.music_volume * self.master_volume)
+
+    def set_music_volume(self, volume: float) -> None:
+        """Set the music volume (0.0 to 1.0) and update the active music channel."""
+        self.music_volume = max(0.0, min(1.0, volume))
+        self.channels[0].set_volume(self.music_volume * self.master_volume)
+
+    def set_sfx_volume(self, volume: float) -> None:
+        """Set the SFX volume (0.0 to 1.0)."""
+        self.sfx_volume = max(0.0, min(1.0, volume))
+
     def update(self) -> None:
         """Update loop (placeholder for future cross-fading logic)."""
         pass

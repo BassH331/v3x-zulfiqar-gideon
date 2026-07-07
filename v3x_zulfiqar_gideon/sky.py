@@ -38,7 +38,14 @@ class Sky:
         
     def update(self, dt_sec: float):
         """Update layer offsets based on elapsed time."""
+        from .settings import SettingsManager
+        quality = SettingsManager().get("graphics_quality")
+        if quality == "low":
+            return
+            
         for i in range(len(self.offsets)):
+            if quality == "medium" and i >= 3:
+                continue
             if self.speeds[i] == 0: continue
             self.offsets[i] -= self.speeds[i] * dt_sec
             if self.offsets[i] <= -self.width:
@@ -46,7 +53,15 @@ class Sky:
                 
     def draw(self, surface: Any):
         """Draw all layers with horizontal wrapping."""
+        from .settings import SettingsManager
+        quality = SettingsManager().get("graphics_quality")
+        
         for i, layer in enumerate(self.layers):
+            if quality == "low" and i >= 2:
+                continue
+            if quality == "medium" and i >= 3:
+                continue
+                
             if self.speeds[i] == 0:
                 surface.blit(layer, (0, 0))
             else:

@@ -12,6 +12,7 @@ making the engine safe to refactor and reorganize without breaking consumers.
 
 # ── Core engine ──────────────────────────────────────────────────────────────
 from .core import V3XCore
+from .settings import SettingsManager
 
 # ── State management ─────────────────────────────────────────────────────────
 from .state_machine import State, StateManager
@@ -76,6 +77,7 @@ from .tts_manager import TTSManager
 __all__ = [
     # Core
     "V3XCore",
+    "SettingsManager",
     # State
     "State", "StateManager",
     # Router

@@ -38,6 +38,8 @@ class V3XCore:
         pg.display.set_caption(title)
         
         self.clock = pg.time.Clock()
+        from .settings import SettingsManager
+        self.settings = SettingsManager()
         self.audio_manager = AudioManager()
         self.state_manager = StateManager(audio_manager=self.audio_manager)
         self.is_running = True
@@ -74,8 +76,9 @@ class V3XCore:
         accumulator = 0.0
         
         while self.is_running:
-            # Tick the clock to get elapsed time. Cap rendering loop at 240 FPS.
-            elapsed = self.clock.tick(240)
+            # Tick the clock to get elapsed time. Cap rendering loop using configured FPS cap.
+            fps_cap = self.settings.get("fps_cap")
+            elapsed = self.clock.tick(fps_cap)
             
             # Prevent "spiral of death" during lag spikes or window focus transitions
             if elapsed > 100.0:
