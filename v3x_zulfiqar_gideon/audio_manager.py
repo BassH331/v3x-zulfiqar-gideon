@@ -33,8 +33,10 @@ class AudioManager:
         self.master_volume = 1.0
         from .settings import SettingsManager
         settings = SettingsManager()
+        self.master_volume = settings.get("master_volume")
         self.music_volume = settings.get("music_volume")
         self.sfx_volume = settings.get("sfx_volume")
+        self.current_music_volume_factor = 1.0
 
         
     def load_sound(self, sound_name: str, file_path: str) -> None:
@@ -73,7 +75,7 @@ class AudioManager:
     
     def play_sound(self, sound_name: str, 
                   priority: int = SoundPriority.NORMAL,
-                  volume: float = 1.0,
+                  volume: float = 7.0,
                   loop: bool = False,
                   location: Optional[Tuple[float, float]] = None,
                   player_pos: Optional[Tuple[float, float]] = None) -> Optional[int]:
@@ -86,8 +88,17 @@ class AudioManager:
             
         sound = self.sound_library[sound_name]
         
+        # Custom sound volume scaling
+        from .settings import SettingsManager
+        sound_volumes = SettingsManager().get("sound_volumes") or {}
+        custom_vol = sound_volumes.get(sound_name, 1.0)
+        
+        base_vol = volume
+        if base_vol == 7.0:
+            base_vol = 1.0
+            
         # Spatial Audio Calculation
-        final_volume = volume * self.sfx_volume * self.master_volume
+        final_volume = base_vol * custom_vol * self.sfx_volume * self.master_volume
         if location and player_pos:
             dist = math.hypot(location[0] - player_pos[0], location[1] - player_pos[1])
             max_dist = 500 # pixels
@@ -96,7 +107,8 @@ class AudioManager:
             # Linear attenuation
             final_volume *= (1.0 - (dist / max_dist))
             
-        sound.set_volume(max(0.0, min(1.0, final_volume)))
+        sound.set_volume(1.0)
+        final_volume = max(0.0, min(1.0, final_volume))
         
         # Channel Management
         channel_id = self._find_free_channel_id()
@@ -105,6 +117,7 @@ class AudioManager:
             
         if channel_id is not None:
             channel = self.channels[channel_id]
+            channel.set_volume(final_volume)
             if loop:
                 channel.play(sound, loops=-1)
             else:
@@ -125,8 +138,11 @@ class AudioManager:
         music_channel = self.channels[0]
         music_channel.stop() # Ensure no overlap
         
+        self.current_music_volume_factor = volume
         sound = self.sound_library[sound_name]
-        sound.set_volume(max(0.0, min(1.0, volume * self.music_volume * self.master_volume)))
+        sound.set_volume(1.0)
+        
+        music_channel.set_volume(max(0.0, min(1.0, volume * self.music_volume * self.master_volume)))
         
         loops = -1 if loop else 0
         music_channel.play(sound, loops=loops)
@@ -161,17 +177,23 @@ class AudioManager:
     def set_master_volume(self, volume: float) -> None:
         """Set the master volume (0.0 to 1.0)."""
         self.master_volume = max(0.0, min(1.0, volume))
+        from .settings import SettingsManager
+        SettingsManager().set("master_volume", self.master_volume)
         # Update current music volume
-        self.channels[0].set_volume(self.music_volume * self.master_volume)
+        self.channels[0].set_volume(max(0.0, min(1.0, self.current_music_volume_factor * self.music_volume * self.master_volume)))
 
     def set_music_volume(self, volume: float) -> None:
         """Set the music volume (0.0 to 1.0) and update the active music channel."""
         self.music_volume = max(0.0, min(1.0, volume))
-        self.channels[0].set_volume(self.music_volume * self.master_volume)
+        from .settings import SettingsManager
+        SettingsManager().set("music_volume", self.music_volume)
+        self.channels[0].set_volume(max(0.0, min(1.0, self.current_music_volume_factor * self.music_volume * self.master_volume)))
 
     def set_sfx_volume(self, volume: float) -> None:
         """Set the SFX volume (0.0 to 1.0)."""
         self.sfx_volume = max(0.0, min(1.0, volume))
+        from .settings import SettingsManager
+        SettingsManager().set("sfx_volume", self.sfx_volume)
 
     def update(self) -> None:
         """Update loop (placeholder for future cross-fading logic)."""

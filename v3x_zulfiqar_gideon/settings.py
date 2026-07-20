@@ -5,13 +5,16 @@ from typing import Any, Dict
 class SettingsManager:
     _instance = None
     _settings_file = "settings.json"
+    data: Dict[str, Any]
     
     # Default settings configuration
     defaults = {
         "fps_cap": 60,
         "graphics_quality": "high",
+        "master_volume": 1.0,
         "music_volume": 0.5,
         "sfx_volume": 0.8,
+        "sound_volumes": {},
     }
     
     def __new__(cls) -> "SettingsManager":
