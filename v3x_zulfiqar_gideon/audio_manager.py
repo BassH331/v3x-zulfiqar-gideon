@@ -292,10 +292,12 @@ class AudioManager:
     
     def stop_all_sounds(self) -> None:
         """Stop all currently playing sounds."""
-        if not pg.mixer.get_init():
-            return
-        for channel in self.channels:
-            channel.stop()
+        try:
+            if pg and hasattr(pg, "mixer") and pg.mixer and pg.mixer.get_init():
+                for channel in self.channels:
+                    channel.stop()
+        except Exception:
+            pass
     
     def set_master_volume(self, volume: float) -> None:
         """Set the master volume (0.0 to 1.0)."""
@@ -324,9 +326,12 @@ class AudioManager:
     
     def __del__(self):
         """Clean up resources."""
-        self.stop_all_sounds()
-        if pg.mixer.get_init():
-            pg.mixer.quit()
+        try:
+            self.stop_all_sounds()
+            if pg and hasattr(pg, "mixer") and pg.mixer and pg.mixer.get_init():
+                pg.mixer.quit()
+        except Exception:
+            pass
 
 
 class FootstepController:

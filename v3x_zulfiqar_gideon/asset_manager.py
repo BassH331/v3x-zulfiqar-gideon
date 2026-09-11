@@ -9,7 +9,36 @@ class AssetManager:
     _fonts = {}
 
     @classmethod
+    def resolve_path(cls, path: str) -> str:
+        """Resolve file path case-insensitively on Linux and other case-sensitive filesystems."""
+        if not path or os.path.exists(path):
+            return path
+        try:
+            norm = os.path.normpath(path)
+            parts = norm.split(os.sep)
+            current = "." if not os.path.isabs(norm) else os.sep
+            for part in parts:
+                if not part or part == ".":
+                    continue
+                if not os.path.isdir(current):
+                    return path
+                candidates = os.listdir(current)
+                part_lower = part.lower()
+                matched = False
+                for c in candidates:
+                    if c.lower() == part_lower:
+                        current = os.path.join(current, c)
+                        matched = True
+                        break
+                if not matched:
+                    return path
+            return current if os.path.exists(current) else path
+        except Exception:
+            return path
+
+    @classmethod
     def get_texture(cls, path):
+        path = cls.resolve_path(path)
         if path not in cls._textures:
             try:
                 cls._textures[path] = pygame.image.load(path).convert_alpha()
@@ -23,6 +52,7 @@ class AssetManager:
 
     @classmethod
     def get_sound(cls, path):
+        path = cls.resolve_path(path)
         if path not in cls._sounds:
             try:
                 cls._sounds[path] = pygame.mixer.Sound(path)
@@ -33,6 +63,7 @@ class AssetManager:
     
     @classmethod
     def get_font(cls, path, size):
+        path = cls.resolve_path(path)
         key = (path, size)
         if key not in cls._fonts:
             try:
@@ -72,6 +103,7 @@ class AssetManager:
     @classmethod
     def get_animation_frames(cls, target_path, cols=None, rows=None, frame_width=None, frame_height=None):
         """Load animation frames from a directory of PNGs or a single sprite sheet image."""
+        target_path = cls.resolve_path(target_path)
         frames = []
         if not os.path.exists(target_path):
             print(f"Error: Path not found {target_path}")
