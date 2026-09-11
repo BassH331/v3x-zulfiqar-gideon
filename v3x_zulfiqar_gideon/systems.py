@@ -17,6 +17,7 @@ class ObjectiveTrigger:
     flag_name: str = ""
     triggered: bool = False
     enabled: bool = True
+    icon_path: Optional[str] = None
 
 class ObjectiveTriggerManager:
     """Manages a queue of objective triggers and checks firing conditions."""
@@ -25,8 +26,8 @@ class ObjectiveTriggerManager:
         self._flags: set[str] = set()
         self._pending: Optional[ObjectiveTrigger] = None
 
-    def add_trigger(self, text: str, title: str = "Objective", trigger_type: str = "time", delay_seconds: float = 0.0, flag_name: str = "", enabled: bool = True) -> None:
-        self._triggers.append(ObjectiveTrigger(text=text, title=title, trigger_type=trigger_type, delay_seconds=delay_seconds, flag_name=flag_name, enabled=enabled))
+    def add_trigger(self, text: str, title: str = "Objective", trigger_type: str = "time", delay_seconds: float = 0.0, flag_name: str = "", enabled: bool = True, icon_path: Optional[str] = None) -> None:
+        self._triggers.append(ObjectiveTrigger(text=text, title=title, trigger_type=trigger_type, delay_seconds=delay_seconds, flag_name=flag_name, enabled=enabled, icon_path=icon_path))
 
     def set_flag(self, name: str) -> None:
         self._flags.add(name)

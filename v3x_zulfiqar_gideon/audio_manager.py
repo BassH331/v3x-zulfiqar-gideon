@@ -48,6 +48,7 @@ class AudioManager:
         }
         self.default_max_instances = 3
         self.current_music_volume_factor = 1.0
+        self.master_audio_config: dict = {}
 
     def register_events(self, event_bus: Any) -> None:
         """Subscribe AudioManager to EventBus events for automatic audio playback."""
