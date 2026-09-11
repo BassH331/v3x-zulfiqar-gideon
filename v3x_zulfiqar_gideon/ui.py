@@ -252,6 +252,12 @@ class FloatingNotification:
         
         # Draw text
         text_surf = self.font.render(self.text, True, (255, 255, 255))
+        max_text_w = int(banner_rect.width * 0.85)
+        if text_surf.get_width() > max_text_w and text_surf.get_width() > 0:
+            scale_factor = max_text_w / float(text_surf.get_width())
+            new_w = max_text_w
+            new_h = max(1, int(text_surf.get_height() * scale_factor))
+            text_surf = pg.transform.smoothscale(text_surf, (new_w, new_h))
         text_surf.set_alpha(alpha_int)
         text_rect = text_surf.get_rect(center=(cx, cy))
         surface.blit(text_surf, text_rect)
