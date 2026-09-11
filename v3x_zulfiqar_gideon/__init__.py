@@ -53,6 +53,21 @@ from .ui import (
     ParchmentDisplay,
 )
 
+# ── Event Bus ────────────────────────────────────────────────────────────────
+from .event_bus import (
+    EventBus,
+    GameEvent,
+    EventType,
+    EntityDied,
+    DamageDealt,
+    DamageReceived,
+    StateChanged,
+    EntitySpawned,
+)
+
+# ── Camera System ────────────────────────────────────────────────────────────
+from .camera import Camera
+
 # ── Visual effects ───────────────────────────────────────────────────────────
 from .effects import SceneHighlighter
 
@@ -96,6 +111,11 @@ __all__ = [
     # UI
     "UITheme", "Button", "LabelButton", "UIButton",
     "FloatingNotification", "NotificationBanner", "ParchmentDisplay",
+    # Event Bus
+    "EventBus", "GameEvent", "EventType",
+    "EntityDied", "DamageDealt", "DamageReceived", "StateChanged", "EntitySpawned",
+    # Camera
+    "Camera",
     # Effects
     "SceneHighlighter",
     # World

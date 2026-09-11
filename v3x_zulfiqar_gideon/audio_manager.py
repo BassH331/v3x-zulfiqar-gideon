@@ -26,9 +26,11 @@ class AudioManager:
         Initialize the AudioManager.
         Assumes pg.mixer.pre_init() and pg.init() have been called externally.
         """
-        self.max_channels = max_channels
-        # Channels are managed by pygame, we just track usage
-        self.channels = [pg.mixer.Channel(i) for i in range(max_channels)]
+        if pg.mixer.get_init():
+            pg.mixer.set_num_channels(max_channels)
+            self.channels = [pg.mixer.Channel(i) for i in range(max_channels)]
+        else:
+            self.channels = []
         self.sound_library: Dict[str, pg.mixer.Sound] = {}
         self.master_volume = 1.0
         from .settings import SettingsManager
@@ -36,16 +38,88 @@ class AudioManager:
         self.master_volume = settings.get("master_volume")
         self.music_volume = settings.get("music_volume")
         self.sfx_volume = settings.get("sfx_volume")
+        self.channel_sound_map: Dict[int, str] = {}
+        self.max_instances_per_sound: Dict[str, int] = {
+            "zombie_noise": 2,
+            "skeleton_alive": 2,
+            "skeleton_spawn": 2,
+            "bats": 2,
+            "wendigo_screams": 2,
+        }
+        self.default_max_instances = 3
         self.current_music_volume_factor = 1.0
 
-        
+    def register_events(self, event_bus: Any) -> None:
+        """Subscribe AudioManager to EventBus events for automatic audio playback."""
+        from .event_bus import DamageDealt, DamageReceived, EntityDied
+        event_bus.subscribe(DamageDealt, self._on_damage_dealt)
+        event_bus.subscribe(DamageReceived, self._on_damage_received)
+        event_bus.subscribe(EntityDied, self._on_entity_died)
+
+    def _on_damage_dealt(self, event: Any) -> None:
+        """Play combat impact SFX when player deals damage."""
+        target_name = getattr(event, "target_tier", "")
+        sound_key = "collision_player_skeleton" if target_name != "boss" else "collision_player_boss"
+        if sound_key in self.sound_library:
+            self.play_sound(sound_key)
+
+    def _on_damage_received(self, event: Any) -> None:
+        """Play damage taken SFX when player receives damage."""
+        sound_key = "collision_player_defend"
+        if sound_key in self.sound_library:
+            self.play_sound(sound_key)
+
+    def _on_entity_died(self, event: Any) -> None:
+        """Play death/harvest SFX when an entity dies."""
+        sound_key = "soul_harvest"
+        if sound_key in self.sound_library:
+            self.play_sound(sound_key)
+
+    def load_audio_config(self, config_path: str) -> None:
+        """Load audio registry mapping from a JSON config file.
+        This is the MASTER config — all keys registered here are protected
+        and cannot be overridden by entity-level audio configs.
+        """
+        if not os.path.exists(config_path):
+            print(f"[AudioManager] Config file not found: {config_path}")
+            return
+        try:
+            import json
+            with open(config_path, "r") as f:
+                data = json.load(f)
+            sounds = data.get("sounds", {})
+            self.master_audio_config = data
+            self._master_sound_keys: set = set()
+            for sound_name, entry in sounds.items():
+                if isinstance(entry, str):
+                    path = entry
+                elif isinstance(entry, dict):
+                    path = entry.get("path")
+                else:
+                    path = None
+                if path and os.path.exists(path):
+                    self.load_sound(sound_name, path)
+                    self._master_sound_keys.add(sound_name)
+            print(f"[AudioManager] Loaded {len(sounds)} audio sound registrations from {config_path}")
+        except Exception as e:
+            print(f"[AudioManager] Failed to load audio config {config_path}: {e}")
+
     def load_sound(self, sound_name: str, file_path: str) -> None:
         """Load a sound file into the sound library."""
         try:
             self.sound_library[sound_name] = pg.mixer.Sound(file_path)
         except Exception as e:
             print(f"Error loading sound {sound_name} from {file_path}: {e}")
-    
+
+    def load_sound_safe(self, sound_name: str, file_path: str) -> None:
+        """Load a sound only if the key is NOT already owned by master_audio_config.
+        Use this from entity-level audio configs to prevent overriding master sounds.
+        """
+        master_keys = getattr(self, "_master_sound_keys", set())
+        if sound_name in master_keys:
+            return  # Silently skip — master config owns this key
+        self.load_sound(sound_name, file_path)
+
     def load_sounds_from_directory(self, directory: str) -> None:
         """Load all .wav and .ogg files from a directory."""
         for filename in os.listdir(directory):
@@ -54,24 +128,34 @@ class AudioManager:
                 self.load_sound(name, os.path.join(directory, filename))
     
     def _find_free_channel_id(self) -> Optional[int]:
-        """Find the index of a free channel."""
-        for i, channel in enumerate(self.channels):
-            if not channel.get_busy():
+        """Find the index of a free SFX channel (channels 1..max_channels-1). Channel 0 is reserved for music."""
+        for i in range(1, len(self.channels)):
+            if not self.channels[i].get_busy():
                 return i
         return None
 
     def _steal_channel_id(self, new_priority: int) -> Optional[int]:
-        """Find the ID of the least important busy channel to interrupt."""
-        # Try to find a free channel first
+        """Find the ID of the least important busy SFX channel to interrupt. Never steals Channel 0."""
         free_id = self._find_free_channel_id()
         if free_id is not None:
             return free_id
             
-        # If no free channel, and priority is high, steal channel 0 (simplification)
+        # Steal from SFX channels (1..max_channels-1) if priority is HIGH or CRITICAL
         if new_priority >= SoundPriority.HIGH:
-            return 0
+            return 1
             
         return None
+
+    def _count_active_instances(self, sound_name: str) -> int:
+        """Count active channels currently playing the specified sound name."""
+        count = 0
+        for channel_id in range(1, len(self.channels)):
+            if self.channels[channel_id].get_busy():
+                if self.channel_sound_map.get(channel_id) == sound_name:
+                    count += 1
+            else:
+                self.channel_sound_map.pop(channel_id, None)
+        return count
     
     def play_sound(self, sound_name: str, 
                   priority: int = SoundPriority.NORMAL,
@@ -83,22 +167,53 @@ class AudioManager:
         Play a sound with optional spatial audio.
         """
         if sound_name not in self.sound_library:
-            print(f"Sound not found: {sound_name}")
-            return None
+            sounds = self.master_audio_config.get("sounds", {})
+            if sound_name in sounds:
+                entry = sounds[sound_name]
+                path = entry if isinstance(entry, str) else (entry.get("path") if isinstance(entry, dict) else None)
+                if path and os.path.exists(path):
+                    self.load_sound(sound_name, path)
+            if sound_name not in self.sound_library:
+                print(f"[AudioManager] Sound not registered or file missing: {sound_name}")
+                return None
             
+        # Concurrency limit check
+        max_inst = self.max_instances_per_sound.get(sound_name, self.default_max_instances)
+        if self._count_active_instances(sound_name) >= max_inst:
+            return None
+
         sound = self.sound_library[sound_name]
         
         # Custom sound volume scaling
         from .settings import SettingsManager
         sound_volumes = SettingsManager().get("sound_volumes") or {}
         custom_vol = sound_volumes.get(sound_name, 1.0)
+
+        # Also check master_audio_config sound_metadata for per-sound volume override
+        if hasattr(self, "master_audio_config") and isinstance(self.master_audio_config, dict):
+            metadata = self.master_audio_config.get("sound_metadata", {}).get(sound_name, {})
+            if isinstance(metadata, dict) and "volume" in metadata:
+                try:
+                    custom_vol *= float(metadata["volume"])
+                except (ValueError, TypeError):
+                    pass
         
         base_vol = volume
         if base_vol == 7.0:
             base_vol = 1.0
-            
+
+        # Determine music vs sfx bus volume
+        category = ""
+        if hasattr(self, "master_audio_config") and isinstance(self.master_audio_config, dict):
+            metadata = self.master_audio_config.get("sound_metadata", {}).get(sound_name, {})
+            if isinstance(metadata, dict):
+                category = metadata.get("category", "")
+
+        is_music = (category == "MUSIC" or sound_name in ("background_music", "game_loop", "burning_village", "forest"))
+        cat_bus_volume = self.music_volume if is_music else self.sfx_volume
+
         # Spatial Audio Calculation
-        final_volume = base_vol * custom_vol * self.sfx_volume * self.master_volume
+        final_volume = base_vol * custom_vol * cat_bus_volume * self.master_volume
         if location and player_pos:
             dist = math.hypot(location[0] - player_pos[0], location[1] - player_pos[1])
             max_dist = 500 # pixels
@@ -107,16 +222,17 @@ class AudioManager:
             # Linear attenuation
             final_volume *= (1.0 - (dist / max_dist))
             
-        sound.set_volume(1.0)
         final_volume = max(0.0, min(1.0, final_volume))
+        sound.set_volume(1.0)
         
-        # Channel Management
+        # Channel Management (SFX channels 1..max_channels-1)
         channel_id = self._find_free_channel_id()
         if channel_id is None:
             channel_id = self._steal_channel_id(priority)
             
         if channel_id is not None:
             channel = self.channels[channel_id]
+            self.channel_sound_map[channel_id] = sound_name
             channel.set_volume(final_volume)
             if loop:
                 channel.play(sound, loops=-1)
@@ -132,8 +248,15 @@ class AudioManager:
         Stops any existing music on that channel first to prevent overlap.
         """
         if sound_name not in self.sound_library:
-            print(f"Music sound not found: {sound_name}")
-            return
+            sounds = self.master_audio_config.get("sounds", {})
+            if sound_name in sounds:
+                entry = sounds[sound_name]
+                path = entry if isinstance(entry, str) else (entry.get("path") if isinstance(entry, dict) else None)
+                if path and os.path.exists(path):
+                    self.load_sound(sound_name, path)
+            if sound_name not in self.sound_library:
+                print(f"[AudioManager] Music sound not registered or file missing: {sound_name}")
+                return
             
         music_channel = self.channels[0]
         music_channel.stop() # Ensure no overlap

@@ -53,8 +53,13 @@ class V3XCore:
             if "overlays" in manifest.theme: UITheme.configure_overlays(**manifest.theme["overlays"])
             
         # 2. Register Audio
+        import os
+        master_cfg_path = "game_data/master_audio_config.json"
+        if os.path.exists(master_cfg_path):
+            self.audio_manager.load_audio_config(master_cfg_path)
+            
         for name, path in manifest.audio.items():
-            self.audio_manager.load_sound(name, path)
+            self.audio_manager.load_sound_safe(name, path)
             
         # 3. Setup Router
         if manifest.routes:
