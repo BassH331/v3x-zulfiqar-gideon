@@ -62,7 +62,21 @@ class AssetManager:
         return cls._sounds[path]
     
     @classmethod
+    def clear(cls):
+        """Clear all cached surfaces, sounds, and fonts."""
+        cls._textures.clear()
+        cls._sounds.clear()
+        cls._fonts.clear()
+
+    @classmethod
     def get_font(cls, path, size):
+        if not pygame.font.get_init():
+            try:
+                pygame.font.init()
+            except Exception:
+                pass
+            cls._fonts.clear()
+
         path = cls.resolve_path(path)
         key = (path, size)
         if key not in cls._fonts:

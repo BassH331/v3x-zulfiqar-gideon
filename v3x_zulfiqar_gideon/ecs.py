@@ -143,6 +143,8 @@ class Actor(Entity):
         return False
 
     def should_deal_damage(self) -> bool:
+        if not self.state or not hasattr(self.state, "name") or "ATTACK" not in self.state.name:
+            return False
         return self.attack_state.is_hit_frame_active() if self.attack_state else False
 
     def get_attack_hitbox(self) -> Any:
@@ -191,9 +193,12 @@ class Actor(Entity):
         self._current_frame_speeds = None
         self._current_next_state = None
         
-        # Sync attack state if entering an attack
-        if self.current_attack_config and hasattr(new_state, 'name') and "ATTACK" in new_state.name:
+        # Sync attack state if entering an attack, or end attack state if leaving
+        is_attack = hasattr(new_state, 'name') and "ATTACK" in new_state.name
+        if self.current_attack_config and is_attack:
             self.attack_state.begin(self.current_attack_config)
+        elif not is_attack and self.attack_state and self.attack_state.is_active:
+            self.attack_state.end()
 
     def update_animation(self, dt: float):
         """Updates the current animation frame with per-frame speed support."""
@@ -258,6 +263,9 @@ class Actor(Entity):
 
     def update(self, dt: float):
         super().update(dt)
-        if self.attack_state.is_active:
+        is_attack = hasattr(self.state, "name") and "ATTACK" in self.state.name if self.state else False
+        if is_attack and self.attack_state and self.attack_state.is_active:
             self.attack_state.update(int(self.animation_index))
+        elif not is_attack and self.attack_state and self.attack_state.is_active:
+            self.attack_state.end()
         self.update_animation(dt)
