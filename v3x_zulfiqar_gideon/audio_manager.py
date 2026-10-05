@@ -259,6 +259,8 @@ class AudioManager:
                 print(f"[AudioManager] Music sound not registered or file missing: {sound_name}")
                 return
             
+        if not self.channels:
+            return
         music_channel = self.channels[0]
         music_channel.stop() # Ensure no overlap
         
@@ -274,7 +276,8 @@ class AudioManager:
 
     def stop_music(self) -> None:
         """Stop any music playing on the dedicated music channel."""
-        self.channels[0].stop()
+        if self.channels:
+            self.channels[0].stop()
     
     def stop_sound(self, channel_id: int) -> None:
         """Stop a sound on the specified channel index."""
@@ -306,14 +309,16 @@ class AudioManager:
         from .settings import SettingsManager
         SettingsManager().set("master_volume", self.master_volume)
         # Update current music volume
-        self.channels[0].set_volume(max(0.0, min(1.0, self.current_music_volume_factor * self.music_volume * self.master_volume)))
+        if self.channels:
+            self.channels[0].set_volume(max(0.0, min(1.0, self.current_music_volume_factor * self.music_volume * self.master_volume)))
 
     def set_music_volume(self, volume: float) -> None:
         """Set the music volume (0.0 to 1.0) and update the active music channel."""
         self.music_volume = max(0.0, min(1.0, volume))
         from .settings import SettingsManager
         SettingsManager().set("music_volume", self.music_volume)
-        self.channels[0].set_volume(max(0.0, min(1.0, self.current_music_volume_factor * self.music_volume * self.master_volume)))
+        if self.channels:
+            self.channels[0].set_volume(max(0.0, min(1.0, self.current_music_volume_factor * self.music_volume * self.master_volume)))
 
     def set_sfx_volume(self, volume: float) -> None:
         """Set the SFX volume (0.0 to 1.0)."""
@@ -326,11 +331,9 @@ class AudioManager:
         pass
     
     def __del__(self):
-        """Clean up resources."""
+        """Clean up resources without tearing down global mixer."""
         try:
             self.stop_all_sounds()
-            if pg and hasattr(pg, "mixer") and pg.mixer and pg.mixer.get_init():
-                pg.mixer.quit()
         except Exception:
             pass
 

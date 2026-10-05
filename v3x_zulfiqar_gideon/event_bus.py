@@ -199,7 +199,7 @@ class EventBus:
         self._subscribers: defaultdict[
             Type[GameEvent], list[_WeakCallback]
         ] = defaultdict(list)
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     # ── Public API ───────────────────────────────────────────────────────
 
@@ -256,9 +256,9 @@ class EventBus:
             subs = self._subscribers.get(event_type)
             if subs is None:
                 return
-            # Dispatch and prune dead refs in one pass
+            # Dispatch and prune dead refs in one pass over snapshot
             alive: list[_WeakCallback] = []
-            for weak_cb in subs:
+            for weak_cb in list(subs):
                 if weak_cb(event):
                     alive.append(weak_cb)
             self._subscribers[event_type] = alive

@@ -33,13 +33,14 @@ class Sky:
             scaled_img = pg.transform.scale(img, (screen_width, screen_height))
             self.layers.append(scaled_img)
             
+        from .settings import SettingsManager
+        self._settings = SettingsManager()
         self.speeds = speeds or [0] * len(self.layers)
         self.offsets = [0.0] * len(self.layers)
         
     def update(self, dt_sec: float):
         """Update layer offsets based on elapsed time."""
-        from .settings import SettingsManager
-        quality = SettingsManager().get("graphics_quality")
+        quality = self._settings.get("graphics_quality")
         if quality == "low":
             return
             
@@ -53,8 +54,7 @@ class Sky:
                 
     def draw(self, surface: Any):
         """Draw all layers with horizontal wrapping."""
-        from .settings import SettingsManager
-        quality = SettingsManager().get("graphics_quality")
+        quality = self._settings.get("graphics_quality")
         
         for i, layer in enumerate(self.layers):
             if quality == "low" and i >= 2:

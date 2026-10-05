@@ -62,19 +62,23 @@ class StateManager:
 
     def push(self, state):
         print(f"[DEBUG] StateManager: Pushing state {state.__class__.__name__}")
-        if self.stack:
+        is_overlay = getattr(state, "is_overlay", False)
+        if self.stack and not is_overlay:
             self.stack[-1].on_exit()
         self.stack.append(state)
+        state.manager = self
         state.on_enter()
         
     def pop(self):
+        popped = None
         if self.stack:
-            print(f"[DEBUG] StateManager: Popping state {self.stack[-1].__class__.__name__}")
-            self.stack[-1].on_exit()
-            self.stack.pop()
+            popped = self.stack.pop()
+            print(f"[DEBUG] StateManager: Popping state {popped.__class__.__name__}")
+            popped.on_exit()
         if self.stack:
             print(f"[DEBUG] StateManager: Resuming state {self.stack[-1].__class__.__name__}")
-            self.stack[-1].on_enter()
+            if popped is None or not getattr(popped, "is_overlay", False):
+                self.stack[-1].on_enter()
             
     def set(self, state):
         """Replaces the entire stack with a single state"""
@@ -83,6 +87,7 @@ class StateManager:
             self.stack[-1].on_exit()
             self.stack.pop()
         self.stack.append(state)
+        state.manager = self
         state.on_enter()
         
     def update(self, dt):
@@ -91,6 +96,9 @@ class StateManager:
             
     def draw(self, surface):
         if self.stack:
+            # If top state is an overlay, draw the underlying state first
+            if len(self.stack) >= 2 and getattr(self.stack[-1], "is_overlay", False):
+                self.stack[-2].draw(surface)
             self.stack[-1].draw(surface)
             
     def handle_event(self, event):
