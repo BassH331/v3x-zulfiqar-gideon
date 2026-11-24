@@ -86,7 +86,7 @@ class AudioManager:
             return
         try:
             import json
-            with open(config_path, "r") as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             sounds = data.get("sounds", {})
             self.master_audio_config = data

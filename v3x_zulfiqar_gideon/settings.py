@@ -15,6 +15,8 @@ class SettingsManager:
         "music_volume": 0.5,
         "sfx_volume": 0.8,
         "sound_volumes": {},
+        "telemetry_enabled": True,
+        "ai_director_enabled": False,
     }
     
     def __new__(cls) -> "SettingsManager":
